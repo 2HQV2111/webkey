@@ -85,7 +85,7 @@
     <label>Nhập tên miền:</label>
     <input type="text" id="prefix" placeholder="Nhập tên miền">
     <label>Số lượng key muốn tạo:</label>
-    <input type="number" id="keyCount" value="1" min="1">
+    <input type="number" id="keyCount" placeholder="Số lượng key muốn tạo" min="1">
     <label>Thời hạn:</label>
     <div style="display: flex; gap: 10px;">
       <input type="number" id="days" placeholder="Ngày" style="flex: 1;">
@@ -94,7 +94,7 @@
       <input type="number" id="seconds" placeholder="Giây" style="flex: 1;">
     </div>
     <label>Số thiết bị cho phép:</label>
-    <input type="number" id="maxDevices" value="1">
+    <input type="number" id="maxDevices" placeholder="Số thiết bị cho phép">
     <button onclick="createKeys()" style="max-width: 300px; margin: 10px auto; display: block;">🚀 Tạo Key Ngay</button>
     <div class="log" id="log"></div>
     <button id="copyBtn" onclick="copyToClipboard()">📋 Sao chép kết quả</button>
