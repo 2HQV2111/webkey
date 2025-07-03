@@ -23,6 +23,7 @@
     input, select {
       background: rgba(255,255,255,0.85);
       color: #000;
+      box-sizing: border-box;
     }
     button {
       background: linear-gradient(135deg, #ff4e50, #f9d423);
@@ -56,18 +57,26 @@
   </style>
 </head>
 <body>
-  <!-- Đăng nhập -->
-  <div id="loginSection">
-    <h2>🔐 Đăng nhập</h2>
-    <label>Tên đăng nhập:</label>
+  <div id="loginSection" style="max-width: 400px; margin: auto;">
+    <h2 style="text-align: center;">🔐 Đăng nhập</h2>
+    <label for="username">Tên đăng nhập:</label>
     <input type="text" id="username" placeholder="Tên đăng nhập">
-    <label>Mật khẩu:</label>
-    <input type="password" id="password" placeholder="Mật khẩu">
-    <button onclick="login()">Đăng nhập</button>
+    <label for="password">Mật khẩu:</label>
+    <div style="position: relative; width: 100%;">
+      <input type="password" id="password" placeholder="Mật khẩu"
+             style="width: 100%; padding-right: 48px; box-sizing: border-box;">
+      <span onclick="togglePassword()"
+            style="position: absolute; right: 14px; top: 50%; transform: translateY(-50%);
+                   cursor: pointer; font-size: 18px; color: #444;">👁️</span>
+    </div>
+    <div style="display: flex; align-items: center; margin: 10px 0;">
+      <input type="checkbox" id="rememberMe" style="margin-right: 8px; width: auto;">
+      <label for="rememberMe" style="margin: 0;">Ghi nhớ đăng nhập</label>
+    </div>
+    <button onclick="login()">ĐĂNG NHẬP</button>
     <div id="loginLog" class="log"></div>
   </div>
 
-  <!-- Form tạo key -->
   <div id="keySection" class="hidden">
     <h2>Tạo Key mới</h2>
     <label>Nhập tên miền:</label>
@@ -89,14 +98,35 @@
 
   <script src="users.js"></script>
   <script>
+    function togglePassword() {
+      const pwInput = document.getElementById("password");
+      pwInput.type = pwInput.type === "password" ? "text" : "password";
+    }
+
+    window.onload = function () {
+      const savedUser = localStorage.getItem("saved_username");
+      const savedPass = localStorage.getItem("saved_password");
+      if (savedUser && savedPass) {
+        document.getElementById("username").value = savedUser;
+        document.getElementById("password").value = savedPass;
+        document.getElementById("rememberMe").checked = true;
+      }
+    };
+
     function login() {
       const user = document.getElementById("username").value.trim();
       const pass = document.getElementById("password").value.trim();
+      const remember = document.getElementById("rememberMe").checked;
       const loginLog = document.getElementById("loginLog");
-
       const validUser = USERS.find(u => u.username === user && u.password === pass);
-
       if (validUser) {
+        if (remember) {
+          localStorage.setItem("saved_username", user);
+          localStorage.setItem("saved_password", pass);
+        } else {
+          localStorage.removeItem("saved_username");
+          localStorage.removeItem("saved_password");
+        }
         document.getElementById("loginSection").classList.add("hidden");
         document.getElementById("keySection").classList.remove("hidden");
       } else {
@@ -118,42 +148,26 @@
       const keyCount = parseInt(document.getElementById('keyCount').value);
       const maxDevices = parseInt(document.getElementById('maxDevices').value);
       const log = document.getElementById('log');
-
       const days = parseInt(document.getElementById('days').value) || 0;
       const hours = parseInt(document.getElementById('hours').value) || 0;
       const minutes = parseInt(document.getElementById('minutes').value) || 0;
       const seconds = parseInt(document.getElementById('seconds').value) || 0;
-
       const totalSeconds = (days * 86400) + (hours * 3600) + (minutes * 60) + seconds;
 
-      if (!prefix) {
-        log.innerText = '⚠️ Bạn chưa nhập tên miền.';
-        return;
-      }
-      if (totalSeconds <= 0) {
-        log.innerText = '⚠️ Vui lòng nhập thời gian hợp lệ.';
-        return;
-      }
+      if (!prefix) return log.innerText = '⚠️ Bạn chưa nhập tên miền.';
+      if (totalSeconds <= 0) return log.innerText = '⚠️ Vui lòng nhập thời gian hợp lệ.';
 
       let resultLog = '';
-
       for (let i = 0; i < keyCount; i++) {
-        let fullKey = '';
-        let attempts = 0;
-        const maxAttempts = 10;
-
-        while (attempts < maxAttempts) {
-          const randomSuffix = generateRandomString(6);
-          fullKey = `${prefix}_${randomSuffix}`;
-
-          const checkRes = await fetch(`https://hqvkey-default-rtdb.firebaseio.com/valid_keys/${fullKey}.json`);
-          const existing = await checkRes.json();
-          if (existing === null) break;
+        let fullKey = '', attempts = 0;
+        while (attempts < 10) {
+          fullKey = `${prefix}_${generateRandomString(6)}`;
+          const res = await fetch(`https://hqvkey-default-rtdb.firebaseio.com/valid_keys/${fullKey}.json`);
+          if (!await res.json()) break;
           attempts++;
         }
-
-        if (attempts === maxAttempts) {
-          resultLog += `❌ Không thể tạo key không trùng sau ${maxAttempts} lần: ${prefix}_xxxxxx\n`;
+        if (attempts === 10) {
+          resultLog += `❌ Không tạo được key sau 10 lần: ${prefix}_xxxxxx\n`;
           continue;
         }
 
@@ -171,11 +185,9 @@
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(body)
           });
-          if (res.ok) {
-            resultLog += `✅ Tạo thành công: ${fullKey}\n`;
-          } else {
-            resultLog += `❌ Lỗi tạo key ${fullKey}. Mã: ${res.status}\n`;
-          }
+          resultLog += res.ok
+            ? `✅ Tạo thành công: ${fullKey}\n`
+            : `❌ Lỗi tạo key ${fullKey}. Mã: ${res.status}\n`;
         } catch (err) {
           resultLog += `❌ Lỗi mạng với key ${fullKey}: ${err.message}\n`;
         }
