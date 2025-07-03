@@ -39,7 +39,7 @@
       transform: scale(1.08);
     }
     .log {
-      margin-top: 20px;
+      margin-top: 10px;
       background: rgba(0,0,0,0.5);
       padding: 10px;
       border-radius: 5px;
@@ -92,13 +92,19 @@
     </div>
     <label>Số thiết bị cho phép:</label>
     <input type="number" id="maxDevices" value="1">
-
-    <!-- 👇 Thu gọn nút tạo key -->
     <button onclick="createKeys()" style="max-width: 300px; margin: 10px auto; display: block;">
       🚀 Tạo Key Ngay
     </button>
-
     <div class="log" id="log"></div>
+
+    <hr style="margin: 20px 0;">
+    <h3>Xoá Key</h3>
+    <label>Nhập tên key muốn xoá:</label>
+    <input type="text" id="deleteKeyName" placeholder="Ví dụ: mydomain_A1B2C3">
+    <button onclick="deleteKey()" style="max-width: 200px; margin: 10px auto; display: block; background: crimson;">
+      ❌ Xóa Key
+    </button>
+    <div class="log" id="deleteLog"></div>
   </div>
 
   <script src="users.js"></script>
@@ -199,6 +205,29 @@
       }
 
       log.innerText = resultLog.trim();
+    }
+
+    async function deleteKey() {
+      const keyName = document.getElementById("deleteKeyName").value.trim();
+      const deleteLog = document.getElementById("deleteLog");
+
+      if (!keyName) {
+        deleteLog.innerText = "⚠️ Bạn chưa nhập tên key.";
+        return;
+      }
+
+      const url = `https://hqvkey-default-rtdb.firebaseio.com/valid_keys/${keyName}.json`;
+
+      try {
+        const res = await fetch(url, { method: "DELETE" });
+        if (res.ok) {
+          deleteLog.innerText = `✅ Đã xoá key: ${keyName}`;
+        } else {
+          deleteLog.innerText = `❌ Không xoá được key ${keyName}. Mã lỗi: ${res.status}`;
+        }
+      } catch (err) {
+        deleteLog.innerText = `❌ Lỗi khi xoá key: ${err.message}`;
+      }
     }
   </script>
 </body>
