@@ -54,6 +54,12 @@
     .hidden {
       display: none;
     }
+    #copyBtn {
+      display: none;
+      max-width: 300px;
+      margin: 10px auto;
+      background-color: #007bff;
+    }
   </style>
 </head>
 <body>
@@ -63,11 +69,8 @@
     <input type="text" id="username" placeholder="Tên đăng nhập">
     <label for="password">Mật khẩu:</label>
     <div style="position: relative; width: 100%;">
-      <input type="password" id="password" placeholder="Mật khẩu"
-             style="width: 100%; padding-right: 48px; box-sizing: border-box;">
-      <span onclick="togglePassword()"
-            style="position: absolute; right: 14px; top: 50%; transform: translateY(-50%);
-                   cursor: pointer; font-size: 18px; color: #444;">👁️</span>
+      <input type="password" id="password" placeholder="Mật khẩu" style="width: 100%; padding-right: 48px; box-sizing: border-box;">
+      <span onclick="togglePassword()" style="position: absolute; right: 14px; top: 50%; transform: translateY(-50%); cursor: pointer; font-size: 18px; color: #444;">👁️</span>
     </div>
     <div style="display: flex; align-items: center; margin: 10px 0;">
       <input type="checkbox" id="rememberMe" style="margin-right: 8px; width: auto;">
@@ -92,26 +95,35 @@
     </div>
     <label>Số thiết bị cho phép:</label>
     <input type="number" id="maxDevices" value="1">
-    <button onclick="createKeys()" style="max-width: 300px; margin: 10px auto; display: block;">
-      🚀 Tạo Key Ngay
-    </button>
+    <button onclick="createKeys()" style="max-width: 300px; margin: 10px auto; display: block;">🚀 Tạo Key Ngay</button>
     <div class="log" id="log"></div>
+    <button id="copyBtn" onclick="copyToClipboard()">📋 Sao chép kết quả</button>
 
     <hr style="margin: 20px 0;">
     <h3>Xoá Key</h3>
     <label>Nhập tên key muốn xoá:</label>
     <input type="text" id="deleteKeyName" placeholder="Ví dụ: mydomain_A1B2C3">
-    <button onclick="deleteKey()" style="max-width: 200px; margin: 10px auto; display: block; background: crimson;">
-      ❌ Xóa Key
-    </button>
+    <button onclick="deleteKey()" style="max-width: 200px; margin: 10px auto; display: block; background: crimson;">❌ Xóa Key</button>
     <div class="log" id="deleteLog"></div>
   </div>
 
-  <script src="users.js"></script>
   <script>
     function togglePassword() {
       const pwInput = document.getElementById("password");
       pwInput.type = pwInput.type === "password" ? "text" : "password";
+    }
+
+    function formatHSD(d, h, m, s) {
+      if (d > 0) return `${d} ngày`;
+      if (h > 0) return `${h} giờ`;
+      if (m > 0) return `${m} phút`;
+      if (s > 0) return `${s} giây`;
+      return "Vô thời hạn";
+    }
+
+    function copyToClipboard() {
+      const text = document.getElementById("log").innerText;
+      navigator.clipboard.writeText(text).then(() => alert("📋 Đã sao chép kết quả!"));
     }
 
     window.onload = function () {
@@ -144,9 +156,8 @@
         loginLog.innerText = "❌ Sai tài khoản hoặc mật khẩu!";
       }
     }
-
     function generateRandomString(length) {
-      const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+      const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
       let result = '';
       for (let i = 0; i < length; i++) {
         result += chars.charAt(Math.floor(Math.random() * chars.length));
@@ -154,31 +165,39 @@
       return result;
     }
 
+
     async function createKeys() {
       const prefix = document.getElementById('prefix').value.trim();
       const keyCount = parseInt(document.getElementById('keyCount').value);
       const maxDevices = parseInt(document.getElementById('maxDevices').value);
       const log = document.getElementById('log');
+      const copyBtn = document.getElementById('copyBtn');
       const days = parseInt(document.getElementById('days').value) || 0;
       const hours = parseInt(document.getElementById('hours').value) || 0;
       const minutes = parseInt(document.getElementById('minutes').value) || 0;
       const seconds = parseInt(document.getElementById('seconds').value) || 0;
       const totalSeconds = (days * 86400) + (hours * 3600) + (minutes * 60) + seconds;
+      const hsdText = formatHSD(days, hours, minutes, seconds);
 
-      if (!prefix) return log.innerText = '⚠️ Bạn chưa nhập tên miền.';
-      if (totalSeconds <= 0) return log.innerText = '⚠️ Vui lòng nhập thời gian hợp lệ.';
+      if (!prefix || totalSeconds <= 0 || keyCount < 1) {
+        log.innerText = "⚠️ Vui lòng nhập đầy đủ thông tin hợp lệ.";
+        copyBtn.style.display = "none";
+        return;
+      }
 
       let resultLog = '';
       for (let i = 0; i < keyCount; i++) {
         let fullKey = '', attempts = 0;
         while (attempts < 10) {
           fullKey = `${prefix}_${generateRandomString(6)}`;
-          const res = await fetch(`https://hqvkey-default-rtdb.firebaseio.com/valid_keys/${fullKey}.json`);
-          if (!await res.json()) break;
+          const check = await fetch(`https://hqvkey-default-rtdb.firebaseio.com/valid_keys/${fullKey}.json`);
+          if (await check.json() === null) break;
           attempts++;
         }
+
         if (attempts === 10) {
-          resultLog += `❌ Không tạo được key sau 10 lần: ${prefix}_xxxxxx\n`;
+          resultLog += `❌ Không tạo được key sau 10 lần: ${prefix}_xxxxxx
+`;
           continue;
         }
 
@@ -196,15 +215,30 @@
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(body)
           });
-          resultLog += res.ok
-            ? `✅ Tạo thành công: ${fullKey}\n`
-            : `❌ Lỗi tạo key ${fullKey}. Mã: ${res.status}\n`;
+          if (res.ok) {
+            if (keyCount === 1) {
+              resultLog = `=====KEY NGO KHONG=====
+KEY: ${fullKey}
+HSD: ${hsdText}
+Số TB: ${maxDevices}
+=======================`;
+            } else {
+              resultLog += `✅ ${fullKey}
+`;
+            }
+          } else {
+            resultLog += `❌ Lỗi tạo key ${fullKey}.
+`;
+          }
         } catch (err) {
-          resultLog += `❌ Lỗi mạng với key ${fullKey}: ${err.message}\n`;
+          resultLog += `❌ Lỗi mạng khi tạo key ${fullKey}: ${err.message}
+`;
         }
       }
 
       log.innerText = resultLog.trim();
+      copyBtn.style.display = "block";
+      
     }
 
     async function deleteKey() {
@@ -230,5 +264,6 @@
       }
     }
   </script>
+  <script src="users.js"></script>
 </body>
 </html>
