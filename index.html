@@ -263,6 +263,27 @@ Số TB: ${maxDevices}
         deleteLog.innerText = `❌ Lỗi khi xoá key: ${err.message}`;
       }
     }
+async function cleanExpiredKeys() {
+  const res = await fetch("https://hqvkey-default-rtdb.firebaseio.com/valid_keys.json");
+  const allKeys = await res.json();
+  if (!allKeys) return;
+
+  const now = Math.floor(Date.now() / 1000);
+  for (const [key, value] of Object.entries(allKeys)) {
+    const expiresAfter = value.expires_after || 0;
+    const activatedAt = value.activated_at || 0;
+    const expireTime = activatedAt + expiresAfter;
+
+    if (expiresAfter > 0 && activatedAt > 0 && now > expireTime) {
+      await fetch(`https://hqvkey-default-rtdb.firebaseio.com/valid_keys/${key}.json`, {
+        method: "DELETE"
+      });
+    }
+  }
+}
+
+setInterval(cleanExpiredKeys, 60000);
+
   </script>
   <script src="users.js"></script>
 </body>
