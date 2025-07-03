@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Tạo Key mới</title>
+  <style>
+    body {
+      font-family: Arial;
+      padding: 20px;
+      background: url('https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRlIh-vPXOhDjK13KWtmWqYAswksBNuvOOUzA&s') no-repeat center center fixed;
+      background-size: cover;
+      background-color: rgba(0, 0, 0, 0.4);
+      color: white;
+      text-shadow: 1px 1px 2px black;
+    }
+    input, button, select {
+      padding: 10px;
+      margin: 8px 0;
+      width: 100%;
+      border: none;
+      border-radius: 5px;
+    }
+    input, select {
+      background: rgba(255,255,255,0.85);
+      color: #000;
+    }
+    button {
+      background: linear-gradient(135deg, #ff4e50, #f9d423);
+      color: #fff;
+      font-weight: bold;
+      font-size: 16px;
+      text-transform: uppercase;
+      box-shadow: 0 4px 8px rgba(0,0,0,0.4);
+      transition: 0.3s ease;
+    }
+    button:hover {
+      background: linear-gradient(135deg, #f9d423, #ff4e50);
+      transform: scale(1.08);
+    }
+    .log {
+      margin-top: 20px;
+      background: rgba(0,0,0,0.5);
+      padding: 10px;
+      border-radius: 5px;
+      white-space: pre-wrap;
+      font-family: monospace;
+    }
+    label {
+      font-weight: bold;
+      margin-top: 10px;
+      display: block;
+    }
+    .hidden {
+      display: none;
+    }
+  </style>
+</head>
+<body>
+  <!-- Đăng nhập -->
+  <div id="loginSection">
+    <h2>🔐 Đăng nhập</h2>
+    <label>Tên đăng nhập:</label>
+    <input type="text" id="username" placeholder="Tên đăng nhập">
+    <label>Mật khẩu:</label>
+    <input type="password" id="password" placeholder="Mật khẩu">
+    <button onclick="login()">Đăng nhập</button>
+    <div id="loginLog" class="log"></div>
+  </div>
+
+  <!-- Form tạo key -->
+  <div id="keySection" class="hidden">
+    <h2>Tạo Key mới</h2>
+    <label>Nhập tên miền:</label>
+    <input type="text" id="prefix" placeholder="Nhập tên miền">
+    <label>Số lượng key muốn tạo:</label>
+    <input type="number" id="keyCount" value="1" min="1">
+    <label>Thời hạn:</label>
+    <div style="display: flex; gap: 10px;">
+      <input type="number" id="days" placeholder="Ngày" style="flex: 1;">
+      <input type="number" id="hours" placeholder="Giờ" style="flex: 1;">
+      <input type="number" id="minutes" placeholder="Phút" style="flex: 1;">
+      <input type="number" id="seconds" placeholder="Giây" style="flex: 1;">
+    </div>
+    <label>Số thiết bị cho phép:</label>
+    <input type="number" id="maxDevices" value="1">
+    <button onclick="createKeys()">🚀 Tạo Key Ngay</button>
+    <div class="log" id="log"></div>
+  </div>
+
+  <script src="users.js"></script>
+  <script>
+    function login() {
+      const user = document.getElementById("username").value.trim();
+      const pass = document.getElementById("password").value.trim();
+      const loginLog = document.getElementById("loginLog");
+
+      const validUser = USERS.find(u => u.username === user && u.password === pass);
+
+      if (validUser) {
+        document.getElementById("loginSection").classList.add("hidden");
+        document.getElementById("keySection").classList.remove("hidden");
+      } else {
+        loginLog.innerText = "❌ Sai tài khoản hoặc mật khẩu!";
+      }
+    }
+
+    function generateRandomString(length) {
+      const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+      let result = '';
+      for (let i = 0; i < length; i++) {
+        result += chars.charAt(Math.floor(Math.random() * chars.length));
+      }
+      return result;
+    }
+
+    async function createKeys() {
+      const prefix = document.getElementById('prefix').value.trim();
+      const keyCount = parseInt(document.getElementById('keyCount').value);
+      const maxDevices = parseInt(document.getElementById('maxDevices').value);
+      const log = document.getElementById('log');
+
+      const days = parseInt(document.getElementById('days').value) || 0;
+      const hours = parseInt(document.getElementById('hours').value) || 0;
+      const minutes = parseInt(document.getElementById('minutes').value) || 0;
+      const seconds = parseInt(document.getElementById('seconds').value) || 0;
+
+      const totalSeconds = (days * 86400) + (hours * 3600) + (minutes * 60) + seconds;
+
+      if (!prefix) {
+        log.innerText = '⚠️ Bạn chưa nhập tên miền.';
+        return;
+      }
+      if (totalSeconds <= 0) {
+        log.innerText = '⚠️ Vui lòng nhập thời gian hợp lệ.';
+        return;
+      }
+
+      let resultLog = '';
+
+      for (let i = 0; i < keyCount; i++) {
+        let fullKey = '';
+        let attempts = 0;
+        const maxAttempts = 10;
+
+        while (attempts < maxAttempts) {
+          const randomSuffix = generateRandomString(6);
+          fullKey = `${prefix}_${randomSuffix}`;
+
+          const checkRes = await fetch(`https://hqvkey-default-rtdb.firebaseio.com/valid_keys/${fullKey}.json`);
+          const existing = await checkRes.json();
+          if (existing === null) break;
+          attempts++;
+        }
+
+        if (attempts === maxAttempts) {
+          resultLog += `❌ Không thể tạo key không trùng sau ${maxAttempts} lần: ${prefix}_xxxxxx\n`;
+          continue;
+        }
+
+        const url = `https://hqvkey-default-rtdb.firebaseio.com/valid_keys/${fullKey}.json`;
+        const body = {
+          expires_after: totalSeconds,
+          activated_at: 0,
+          device_id: "",
+          max_devices: maxDevices
+        };
+
+        try {
+          const res = await fetch(url, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(body)
+          });
+          if (res.ok) {
+            resultLog += `✅ Tạo thành công: ${fullKey}\n`;
+          } else {
+            resultLog += `❌ Lỗi tạo key ${fullKey}. Mã: ${res.status}\n`;
+          }
+        } catch (err) {
+          resultLog += `❌ Lỗi mạng với key ${fullKey}: ${err.message}\n`;
+        }
+      }
+
+      log.innerText = resultLog;
+    }
+  </script>
+</body>
+</html>
