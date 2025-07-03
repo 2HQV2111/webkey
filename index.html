@@ -92,7 +92,12 @@
     </div>
     <label>Số thiết bị cho phép:</label>
     <input type="number" id="maxDevices" value="1">
-    <button onclick="createKeys()">🚀 Tạo Key Ngay</button>
+
+    <!-- 👇 Thu gọn nút tạo key -->
+    <button onclick="createKeys()" style="max-width: 300px; margin: 10px auto; display: block;">
+      🚀 Tạo Key Ngay
+    </button>
+
     <div class="log" id="log"></div>
   </div>
 
@@ -193,7 +198,7 @@
         }
       }
 
-      log.innerText = resultLog;
+      log.innerText = resultLog.trim();
     }
   </script>
 </body>
