@@ -1,6 +1,6 @@
 // users.js
 const USERS = [
-  { username: "hqv", password: "hqv" },
-  { username: "LUCKYCHEAT", password: "LUCKYCHEAT127" },
+  { username: "vh21112004@gmail.com", password: "hoangquocviet" },
+  { username: "ngokhong", password: "ngokhongmod" },
   // thêm tài khoản ở đây
 ];
