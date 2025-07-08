@@ -45,6 +45,8 @@
       border-radius: 5px;
       white-space: pre-wrap;
       font-family: monospace;
+      max-height: 400px;
+      overflow-y: auto;
     }
     label {
       font-weight: bold;
@@ -98,6 +100,9 @@
     <button onclick="createKeys()" style="max-width: 300px; margin: 10px auto; display: block;">🚀 Tạo Key Ngay</button>
     <div class="log" id="log"></div>
     <button id="copyBtn" onclick="copyToClipboard()">📋 Sao chép kết quả</button>
+
+    <button onclick="showAllKeys()" style="max-width: 300px; margin: 10px auto; display: block; background: seagreen;">📋 Xem danh sách key</button>
+    <div class="log" id="allKeysLog"></div>
 
     <hr style="margin: 20px 0;">
     <h3>Xoá Key</h3>
@@ -156,6 +161,7 @@
         loginLog.innerText = "❌ Sai tài khoản hoặc mật khẩu!";
       }
     }
+
     function generateRandomString(length) {
       const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
       let result = '';
@@ -164,7 +170,6 @@
       }
       return result;
     }
-
 
     async function createKeys() {
       const prefix = document.getElementById('prefix').value.trim();
@@ -196,8 +201,7 @@
         }
 
         if (attempts === 10) {
-          resultLog += `❌ Không tạo được key sau 10 lần: ${prefix}_xxxxxx
-`;
+          resultLog += `❌ Không tạo được key sau 10 lần: ${prefix}_xxxxxx\n`;
           continue;
         }
 
@@ -217,28 +221,20 @@
           });
           if (res.ok) {
             if (keyCount === 1) {
-              resultLog = `=====KEY NGO KHONG=====
-KEY: ${fullKey}
-HSD: ${hsdText}
-Số TB: ${maxDevices}
-=======================`;
+              resultLog = `=====KEY NGO KHONG=====\nKEY: ${fullKey}\nHSD: ${hsdText}\nSố TB: ${maxDevices}\n=======================`;
             } else {
-              resultLog += `✅ ${fullKey}
-`;
+              resultLog += `✅ ${fullKey}\n`;
             }
           } else {
-            resultLog += `❌ Lỗi tạo key ${fullKey}.
-`;
+            resultLog += `❌ Lỗi tạo key ${fullKey}.\n`;
           }
         } catch (err) {
-          resultLog += `❌ Lỗi mạng khi tạo key ${fullKey}: ${err.message}
-`;
+          resultLog += `❌ Lỗi mạng khi tạo key ${fullKey}: ${err.message}\n`;
         }
       }
 
       log.innerText = resultLog.trim();
       copyBtn.style.display = "block";
-      
     }
 
     async function deleteKey() {
@@ -263,28 +259,63 @@ Số TB: ${maxDevices}
         deleteLog.innerText = `❌ Lỗi khi xoá key: ${err.message}`;
       }
     }
-async function cleanExpiredKeys() {
-  const res = await fetch("https://hqvkey-default-rtdb.firebaseio.com/valid_keys.json");
-  const allKeys = await res.json();
-  if (!allKeys) return;
 
-  const now = Math.floor(Date.now() / 1000);
-  for (const [key, value] of Object.entries(allKeys)) {
-    const expiresAfter = value.expires_after || 0;
-    const activatedAt = value.activated_at || 0;
-    const expireTime = activatedAt + expiresAfter;
+   
+  async function showAllKeys() {
+    const allKeysLog = document.getElementById("allKeysLog");
+    allKeysLog.innerText = "⏳ Đang tải...";
+    try {
+      const res = await fetch("https://hqvkey-default-rtdb.firebaseio.com/valid_keys.json");
+      const allKeys = await res.json();
+      if (!allKeys) {
+        allKeysLog.innerText = "⚠️ Không có key nào trong hệ thống.";
+        return;
+      }
 
-    if (expiresAfter > 0 && activatedAt > 0 && now > expireTime) {
-      await fetch(`https://hqvkey-default-rtdb.firebaseio.com/valid_keys/${key}.json`, {
-        method: "DELETE"
-      });
+      const now = Math.floor(Date.now() / 1000);
+      let text = "";
+      for (const [key, value] of Object.entries(allKeys)) {
+        const act = value.activated_at || 0;
+        const exp = value.expires_after || 0;
+        let hsd = "", status = "";
+
+        if (act === 0) {
+          // Chưa kích hoạt
+          let remain = exp;
+          const d = Math.floor(remain / 86400);
+          const h = Math.floor((remain % 86400) / 3600);
+          const m = Math.floor((remain % 3600) / 60);
+          const s = remain % 60;
+          hsd = `${d}d ${h}h ${m}m ${s}s`;
+          status = "❌";
+        } else {
+          // Đã kích hoạt
+          const remain = (act + exp) - now;
+          if (remain <= 0) {
+            hsd = "⛔ Hết hạn";
+          } else {
+            const d = Math.floor(remain / 86400);
+            const h = Math.floor((remain % 86400) / 3600);
+            const m = Math.floor((remain % 3600) / 60);
+            const s = remain % 60;
+            hsd = `${d}d ${h}h ${m}m ${s}s`;
+          }
+          status = "✅";
+        }
+
+        text += `🔑 ${key} | HSD: ${hsd} | ${status}\n`;
+      }
+
+      allKeysLog.innerText = text.trim();
+    } catch (err) {
+      allKeysLog.innerText = `❌ Lỗi khi tải key: ${err.message}`;
     }
   }
-}
+</script>
 
-setInterval(cleanExpiredKeys, 60000);
 
-  </script>
+
+  <!-- Load danh sách tài khoản -->
   <script src="users.js"></script>
 </body>
 </html>
