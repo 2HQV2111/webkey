@@ -261,56 +261,59 @@
     }
 
    
-  async function showAllKeys() {
-    const allKeysLog = document.getElementById("allKeysLog");
-    allKeysLog.innerText = "⏳ Đang tải...";
-    try {
-      const res = await fetch("https://hqvkey-default-rtdb.firebaseio.com/valid_keys.json");
-      const allKeys = await res.json();
-      if (!allKeys) {
-        allKeysLog.innerText = "⚠️ Không có key nào trong hệ thống.";
-        return;
-      }
+async function showAllKeys() {
+  const allKeysLog = document.getElementById("allKeysLog");
+  allKeysLog.innerText = "⏳ Đang tải...";
+  try {
+    const res = await fetch("https://hqvkey-default-rtdb.firebaseio.com/valid_keys.json");
+    const allKeys = await res.json();
+    if (!allKeys) {
+      allKeysLog.innerText = "⚠️ Không có key nào trong hệ thống.";
+      return;
+    }
 
-      const now = Math.floor(Date.now() / 1000);
-      let text = "";
-      for (const [key, value] of Object.entries(allKeys)) {
-        const act = value.activated_at || 0;
-        const exp = value.expires_after || 0;
-        let hsd = "", status = "";
+    const now = Math.floor(Date.now() / 1000);
+    let text = "";
+    for (const [key, value] of Object.entries(allKeys)) {
+      const act = value.activated_at || 0;
+      const exp = value.expires_after || 0;
+      let hsd = "", status = "";
 
-        if (act === 0) {
-          // Chưa kích hoạt
-          let remain = exp;
+      if (act === 0) {
+        let remain = exp;
+        const d = Math.floor(remain / 86400);
+        const h = Math.floor((remain % 86400) / 3600);
+        const m = Math.floor((remain % 3600) / 60);
+        const s = remain % 60;
+        hsd = `${d}d ${h}h ${m}m ${s}s`;
+        status = "❌";
+      } else {
+        const remain = (act + exp) - now;
+        if (remain <= 0) {
+          // ✅ Tự động xóa key hết hạn
+          await fetch(`https://hqvkey-default-rtdb.firebaseio.com/valid_keys/${key}.json`, {
+            method: "DELETE"
+          });
+          continue; // Bỏ qua key đã xóa
+        } else {
           const d = Math.floor(remain / 86400);
           const h = Math.floor((remain % 86400) / 3600);
           const m = Math.floor((remain % 3600) / 60);
           const s = remain % 60;
           hsd = `${d}d ${h}h ${m}m ${s}s`;
-          status = "❌";
-        } else {
-          // Đã kích hoạt
-          const remain = (act + exp) - now;
-          if (remain <= 0) {
-            hsd = "⛔ Hết hạn";
-          } else {
-            const d = Math.floor(remain / 86400);
-            const h = Math.floor((remain % 86400) / 3600);
-            const m = Math.floor((remain % 3600) / 60);
-            const s = remain % 60;
-            hsd = `${d}d ${h}h ${m}m ${s}s`;
-          }
           status = "✅";
         }
-
-        text += `🔑 ${key} | HSD: ${hsd} | ${status}\n`;
       }
 
-      allKeysLog.innerText = text.trim();
-    } catch (err) {
-      allKeysLog.innerText = `❌ Lỗi khi tải key: ${err.message}`;
+      text += `🔑 ${key} | HSD: ${hsd} | ${status}\n`;
     }
+
+    allKeysLog.innerText = text.trim();
+  } catch (err) {
+    allKeysLog.innerText = `❌ Lỗi khi tải key: ${err.message}`;
   }
+}
+
 </script>
 
 
