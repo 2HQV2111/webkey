@@ -184,11 +184,12 @@
       const totalSeconds = (days * 86400) + (hours * 3600) + (minutes * 60) + seconds;
       const hsdText = formatHSD(days, hours, minutes, seconds);
 
-      if (!prefix || totalSeconds <= 0 || keyCount < 1) {
-        log.innerText = "⚠️ Vui lòng nhập đầy đủ thông tin hợp lệ.";
-        copyBtn.style.display = "none";
-        return;
-      }
+        if (!prefix) return log.innerText = '⚠️ Bạn chưa nhập tên miền.';
+	if (isNaN(keyCount) || keyCount <= 0) return log.innerText = '⚠️ Vui lòng nhập số key muốn tạo.';
+	if (totalSeconds <= 0) return log.innerText = '⚠️ Vui lòng nhập thời gian hợp lệ.';
+	if (isNaN(maxDevices) || maxDevices <= 0) return log.innerText = '⚠️ Vui lòng nhập số thiết bị tối đa.';
+
+
 
       let resultLog = '';
       for (let i = 0; i < keyCount; i++) {
