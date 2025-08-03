@@ -172,71 +172,70 @@
     }
 
     async function createKeys() {
-      const prefix = document.getElementById('prefix').value.trim();
-      const keyCount = parseInt(document.getElementById('keyCount').value);
-      const maxDevices = parseInt(document.getElementById('maxDevices').value);
-      const log = document.getElementById('log');
-      const copyBtn = document.getElementById('copyBtn');
-      const days = parseInt(document.getElementById('days').value) || 0;
-      const hours = parseInt(document.getElementById('hours').value) || 0;
-      const minutes = parseInt(document.getElementById('minutes').value) || 0;
-      const seconds = parseInt(document.getElementById('seconds').value) || 0;
-      const totalSeconds = (days * 86400) + (hours * 3600) + (minutes * 60) + seconds;
-      const hsdText = formatHSD(days, hours, minutes, seconds);
+  const prefix = document.getElementById('prefix').value.trim();
+  const keyCount = parseInt(document.getElementById('keyCount').value);
+  const maxDevices = parseInt(document.getElementById('maxDevices').value);
+  const log = document.getElementById('log');
+  const copyBtn = document.getElementById('copyBtn');
+  const days = parseInt(document.getElementById('days').value) || 0;
+  const hours = parseInt(document.getElementById('hours').value) || 0;
+  const minutes = parseInt(document.getElementById('minutes').value) || 0;
+  const seconds = parseInt(document.getElementById('seconds').value) || 0;
+  const totalSeconds = (days * 86400) + (hours * 3600) + (minutes * 60) + seconds;
+  const hsdText = formatHSD(days, hours, minutes, seconds);
 
-        if (!prefix) return log.innerText = '⚠️ Bạn chưa nhập tên miền.';
-	if (isNaN(keyCount) || keyCount <= 0) return log.innerText = '⚠️ Vui lòng nhập số key muốn tạo.';
-	if (totalSeconds <= 0) return log.innerText = '⚠️ Vui lòng nhập thời gian hợp lệ.';
-	if (isNaN(maxDevices) || maxDevices <= 0) return log.innerText = '⚠️ Vui lòng nhập số thiết bị tối đa.';
+  if (!prefix) return log.innerText = '⚠️ Bạn chưa nhập tên miền.';
+  if (isNaN(keyCount) || keyCount <= 0) return log.innerText = '⚠️ Vui lòng nhập số key muốn tạo.';
+  if (totalSeconds <= 0) return log.innerText = '⚠️ Vui lòng nhập thời gian hợp lệ.';
+  if (isNaN(maxDevices) || maxDevices <= 0) return log.innerText = '⚠️ Vui lòng nhập số thiết bị tối đa.';
 
-
-
-      let resultLog = '';
-      for (let i = 0; i < keyCount; i++) {
-        let fullKey = '', attempts = 0;
-        while (attempts < 10) {
-          fullKey = `${prefix}_${generateRandomString(10)}`;
-          const check = await fetch(`https://hqvkey-default-rtdb.firebaseio.com/valid_keys/${fullKey}.json`);
-          if (await check.json() === null) break;
-          attempts++;
-        }
-
-        if (attempts === 10) {
-          resultLog += `❌ Không tạo được key sau 10 lần: ${prefix}_xxxxxx\n`;
-          continue;
-        }
-
-        const url = `https://hqvkey-default-rtdb.firebaseio.com/valid_keys/${fullKey}.json`;
-        const body = {
-          expires_after: totalSeconds,
-          activated_at: 0,
-          device_id: "",
-          max_devices: maxDevices
-        };
-
-        try {
-          const res = await fetch(url, {
-            method: 'PUT',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(body)
-          });
-          if (res.ok) {
-            if (keyCount === 1) {
-              resultLog = `=====KEY NGO KHONG=====\nKEY: ${fullKey}\nHSD: ${hsdText}\nSố TB: ${maxDevices}\n=======================`;
-            } else {
-              resultLog += `✅ ${fullKey}\n`;
-            }
-          } else {
-            resultLog += `❌ Lỗi tạo key ${fullKey}.\n`;
-          }
-        } catch (err) {
-          resultLog += `❌ Lỗi mạng khi tạo key ${fullKey}: ${err.message}\n`;
-        }
-      }
-
-      log.innerText = resultLog.trim();
-      copyBtn.style.display = "block";
+  let resultLog = '';
+  for (let i = 0; i < keyCount; i++) {
+    let fullKey = '', attempts = 0;
+    while (attempts < 10) {
+      fullKey = `${prefix}_${generateRandomString(10)}`;
+      const check = await fetch(`https://hqvkey-default-rtdb.firebaseio.com/valid_keys/${fullKey}.json`);
+      if (await check.json() === null) break;
+      attempts++;
     }
+
+    if (attempts === 10) {
+      resultLog += `❌ Không tạo được key sau 10 lần: ${prefix}_xxxxxx\n`;
+      continue;
+    }
+
+    const url = `https://hqvkey-default-rtdb.firebaseio.com/valid_keys/${fullKey}.json`;
+    const body = {
+      expires_after: totalSeconds,
+      activated_at: 0,
+      max_devices: maxDevices,
+      devices: {} // ✅ thêm biến đếm thiết bị
+    };
+
+    try {
+      const res = await fetch(url, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body)
+      });
+      if (res.ok) {
+        if (keyCount === 1) {
+          resultLog = `=====KEY NGO KHONG=====\nKEY: ${fullKey}\nHSD: ${hsdText}\nSố TB: ${maxDevices}\n=======================`;
+        } else {
+          resultLog += `✅ ${fullKey}\n`;
+        }
+      } else {
+        resultLog += `❌ Lỗi tạo key ${fullKey}.\n`;
+      }
+    } catch (err) {
+      resultLog += `❌ Lỗi mạng khi tạo key ${fullKey}: ${err.message}\n`;
+    }
+  }
+
+  log.innerText = resultLog.trim();
+  copyBtn.style.display = "block";
+}
+
 
     async function deleteKey() {
       const keyName = document.getElementById("deleteKeyName").value.trim();
@@ -262,58 +261,60 @@
     }
 
    
-async function showAllKeys() {
-  const allKeysLog = document.getElementById("allKeysLog");
-  allKeysLog.innerText = "⏳ Đang tải...";
-  try {
-    const res = await fetch("https://hqvkey-default-rtdb.firebaseio.com/valid_keys.json");
-    const allKeys = await res.json();
-    if (!allKeys) {
-      allKeysLog.innerText = "⚠️ Không có key nào trong hệ thống.";
-      return;
-    }
-
-    const now = Math.floor(Date.now() / 1000);
-    let text = "";
-    for (const [key, value] of Object.entries(allKeys)) {
-      const act = value.activated_at || 0;
-      const exp = value.expires_after || 0;
-      let hsd = "", status = "";
-
-      if (act === 0) {
-        let remain = exp;
-        const d = Math.floor(remain / 86400);
-        const h = Math.floor((remain % 86400) / 3600);
-        const m = Math.floor((remain % 3600) / 60);
-        const s = remain % 60;
-        hsd = `${d}d ${h}h ${m}m ${s}s`;
-        status = "❌";
-      } else {
-        const remain = (act + exp) - now;
-        if (remain <= 0) {
-          // ✅ Tự động xóa key hết hạn
-          await fetch(`https://hqvkey-default-rtdb.firebaseio.com/valid_keys/${key}.json`, {
-            method: "DELETE"
-          });
-          continue; // Bỏ qua key đã xóa
-        } else {
-          const d = Math.floor(remain / 86400);
-          const h = Math.floor((remain % 86400) / 3600);
-          const m = Math.floor((remain % 3600) / 60);
-          const s = remain % 60;
-          hsd = `${d}d ${h}h ${m}m ${s}s`;
-          status = "✅";
+ async function showAllKeys() {
+      const allKeysLog = document.getElementById("allKeysLog");
+      allKeysLog.innerText = "⏳ Đang tải...";
+      try {
+        const res = await fetch("https://hqvkey-default-rtdb.firebaseio.com/valid_keys.json");
+        const allKeys = await res.json();
+        if (!allKeys) {
+          allKeysLog.innerText = "⚠️ Không có key nào trong hệ thống.";
+          return;
         }
+
+        const now = Math.floor(Date.now() / 1000);
+        let text = "";
+        for (const [key, value] of Object.entries(allKeys)) {
+          const act = value.activated_at || 0;
+          const exp = value.expires_after || 0;
+          const maxDev = value.max_devices || 1;
+          const usedDev = value.devices ? Object.keys(value.devices).length : 0;
+          let hsd = "", status = "";
+
+          if (act === 0) {
+            let remain = exp;
+            const d = Math.floor(remain / 86400);
+            const h = Math.floor((remain % 86400) / 3600);
+            const m = Math.floor((remain % 3600) / 60);
+            const s = remain % 60;
+            hsd = `${d}d ${h}h ${m}m ${s}s`;
+            status = "❌";
+          } else {
+            const remain = (act + exp) - now;
+            if (remain <= 0) {
+              await fetch(`https://hqvkey-default-rtdb.firebaseio.com/valid_keys/${key}.json`, {
+                method: "DELETE"
+              });
+              continue;
+            } else {
+              const d = Math.floor(remain / 86400);
+              const h = Math.floor((remain % 86400) / 3600);
+              const m = Math.floor((remain % 3600) / 60);
+              const s = remain % 60;
+              hsd = `${d}d ${h}h ${m}m ${s}s`;
+              status = "✅";
+            }
+          }
+
+          text += `🔑 ${key} | HSD: ${hsd} | TB: ${usedDev}/${maxDev} | ${status}
+`;
+        }
+
+        allKeysLog.innerText = text.trim();
+      } catch (err) {
+        allKeysLog.innerText = `❌ Lỗi khi tải key: ${err.message}`;
       }
-
-      text += `🔑 ${key} | HSD: ${hsd} | ${status}\n`;
     }
-
-    allKeysLog.innerText = text.trim();
-  } catch (err) {
-    allKeysLog.innerText = `❌ Lỗi khi tải key: ${err.message}`;
-  }
-}
 
 </script>
 
